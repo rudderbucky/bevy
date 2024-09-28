@@ -85,9 +85,16 @@ use bevy::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Startup, (spawn_text, spawn_player))
+        .add_systems(
+            Startup,
+            (spawn_text, spawn_player, spawn_toggle_interpolation_button),
+        )
+        .init_state::<InterpolationState>()
         // Advance the physics simulation using a fixed timestep.
-        .add_systems(FixedUpdate, advance_physics)
+        .add_systems(
+            FixedUpdate,
+            advance_physics.run_if(in_state(InterpolationState::Enabled)),
+        )
         .add_systems(
             // The `RunFixedMainLoop` schedule allows us to schedule systems to run before and after the fixed timestep loop.
             RunFixedMainLoop,
@@ -99,7 +106,16 @@ fn main() {
                 // The player's visual representation needs to be updated after the physics simulation has been advanced.
                 // This could be run in `Update`, but if we run it here instead, the systems in `Update`
                 // will be working with the `Transform` that will actually be shown on screen.
-                interpolate_rendered_transform.in_set(RunFixedMainLoopSystem::AfterFixedMainLoop),
+                interpolate_rendered_transform
+                    .in_set(RunFixedMainLoopSystem::AfterFixedMainLoop)
+                    .run_if(in_state(InterpolationState::Enabled)),
+            ),
+        )
+        .add_systems(
+            Update,
+            (
+                toggle_interpolation_state,
+                advance_physics.run_if(in_state(InterpolationState::Disabled)),
             ),
         )
         .run();
@@ -168,6 +184,57 @@ fn spawn_text(mut commands: Commands) {
         });
 }
 
+const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
+const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+
+/// Spawn a button to toggle interpolation for easier visualization
+fn spawn_toggle_interpolation_button(mut commands: Commands) {
+    // Common style for all buttons on the screen
+    let button_style = Style {
+        width: Val::Px(300.0),
+        height: Val::Px(65.0),
+        margin: UiRect::all(Val::Px(20.0)),
+        justify_content: JustifyContent::Center,
+        align_items: AlignItems::Center,
+        ..default()
+    };
+
+    let button_text_style = TextStyle {
+        font_size: 33.0,
+        color: TEXT_COLOR,
+        ..default()
+    };
+
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                position_type: PositionType::Absolute,
+                align_self: AlignSelf::End,
+                bottom: Val::Px(12.0),
+                right: Val::Px(12.0),
+                ..default()
+            },
+            ..default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    ToggleInterpolationStateButton,
+                    ButtonBundle {
+                        style: button_style.clone(),
+                        background_color: NORMAL_BUTTON.into(),
+                        ..default()
+                    },
+                ))
+                .with_children(|parent| {
+                    parent.spawn(TextBundle::from_section(
+                        "Toggle interpolation",
+                        button_text_style.clone(),
+                    ));
+                });
+        });
+}
+
 /// Handle keyboard input and accumulate it in the `AccumulatedInput` component.
 ///
 /// There are many strategies for how to handle all the input that happened since the last fixed timestep.
@@ -202,11 +269,8 @@ fn handle_input(
 }
 
 /// Advance the physics simulation by one fixed timestep. This may run zero or multiple times per frame.
-///
-/// Note that since this runs in `FixedUpdate`, `Res<Time>` would be `Res<Time<Fixed>>` automatically.
-/// We are being explicit here for clarity.
 fn advance_physics(
-    fixed_time: Res<Time<Fixed>>,
+    fixed_time: Res<Time>,
     mut query: Query<(
         &mut PhysicalTranslation,
         &mut PreviousPhysicalTranslation,
@@ -248,4 +312,33 @@ fn interpolate_rendered_transform(
         let rendered_translation = previous.lerp(current, alpha);
         transform.translation = rendered_translation;
     }
+}
+
+#[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
+enum InterpolationState {
+    #[default]
+    Enabled,
+    Disabled,
+}
+
+#[derive(Component)]
+struct ToggleInterpolationStateButton;
+
+fn toggle_interpolation_state(
+    button_q: Query<&Interaction, (With<ToggleInterpolationStateButton>, Changed<Interaction>)>,
+    mut next_state: ResMut<NextState<InterpolationState>>,
+    current_state: Res<State<InterpolationState>>,
+) {
+    let Ok(i) = button_q.get_single() else {
+        return;
+    };
+
+    if *i != Interaction::Pressed {
+        return;
+    }
+
+    next_state.set(match **current_state {
+        InterpolationState::Enabled => InterpolationState::Disabled,
+        InterpolationState::Disabled => InterpolationState::Enabled,
+    });
 }
