@@ -4,6 +4,7 @@ use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     prelude::*,
     text::FontSmoothing,
+    window::PresentMode,
 };
 
 use bevy::{
@@ -25,7 +26,16 @@ impl OverlayColor {
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: PresentMode::Immediate,
+                    resizable: true,
+                    position: WindowPosition::Automatic,
+                    mode: bevy::window::WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+                    ..default()
+                }),
+                ..default()
+            }),
             Material2dPlugin::<CustomMaterial>::default(),
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
