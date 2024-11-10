@@ -3486,6 +3486,14 @@ path = "examples/dev_tools/fps_overlay.rs"
 doc-scrape-examples = true
 required-features = ["bevy_dev_tools"]
 
+
+[[example]]
+name = "fps_overlay_stress"
+path = "examples/dev_tools/fps_overlay_stress.rs"
+doc-scrape-examples = true
+required-features = ["bevy_dev_tools"]
+
+
 [[example]]
 name = "2d_top_down_camera"
 path = "examples/camera/2d_top_down_camera.rs"
