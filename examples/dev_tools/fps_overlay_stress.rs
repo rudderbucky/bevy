@@ -3,7 +3,7 @@
 use bevy::{
     dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
     prelude::*,
-    text::FontSmoothing,
+    sprite::{MaterialMesh2dBundle, Mesh2d},
 };
 
 use bevy::{
@@ -29,17 +29,14 @@ fn main() {
             Material2dPlugin::<CustomMaterial>::default(),
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
-                    text_config: TextFont {
+                    text_config: TextStyle {
                         // Here we define size of our overlay
-                        font_size: 42.0,
+                        font_size: 50.0,
+                        // We can also change color of the overlay
+                        color: Color::srgb(0.0, 1.0, 0.0),
                         // If we want, we can use a custom font
                         font: default(),
-                        // We could also disable font smoothing,
-                        font_smoothing: FontSmoothing::default(),
                     },
-                    // We can also change color of the overlay
-                    text_color: OverlayColor::GREEN,
-                    enabled: true,
                 },
             },
         ))
@@ -55,53 +52,51 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     // We need to spawn a camera (2d or 3d) to see the overlay
-    commands.spawn(Camera2d);
+    commands.spawn(Camera2dBundle::default());
 
     // Instruction text
-
-    commands.spawn((
-        Text::new(concat!(
-            "Press 1 to toggle the overlay color.\n",
-            "Press 2 to decrease the overlay size.\n",
-            "Press 3 to increase the overlay size.\n",
-            "Press 4 to toggle the overlay visibility."
-        )),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(12.),
-            left: Val::Px(12.),
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
             ..default()
-        },
-    ));
+        })
+        .with_children(|c| {
+            c.spawn(TextBundle::from_section(
+                concat!(
+                    "Press 1 to change color of the overlay.\n",
+                    "Press 2 to change size of the overlay."
+                ),
+                TextStyle {
+                    font_size: 25.0,
+                    ..default()
+                },
+            ));
+        });
 
     // quad
-    commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(2500., 2500.))),
-        MeshMaterial2d(materials.add(CustomMaterial {
+    commands.spawn((MaterialMesh2dBundle {
+        mesh: meshes.add(Rectangle::new(2500., 2500.)).into(),
+        material: materials.add(CustomMaterial {
             color: LinearRgba::BLUE,
             color_texture: Some(asset_server.load("branding/icon.png")),
-        })),
-        Transform::default(),
-    ));
+        }),
+        ..default()
+    },));
 }
 
 fn customize_config(input: Res<ButtonInput<KeyCode>>, mut overlay: ResMut<FpsOverlayConfig>) {
     if input.just_pressed(KeyCode::Digit1) {
         // Changing resource will affect overlay
-        if overlay.text_color == OverlayColor::GREEN {
-            overlay.text_color = OverlayColor::RED;
-        } else {
-            overlay.text_color = OverlayColor::GREEN;
-        }
+        overlay.text_config.color = Color::srgb(1.0, 0.0, 0.0);
     }
     if input.just_pressed(KeyCode::Digit2) {
         overlay.text_config.font_size -= 2.0;
-    }
-    if input.just_pressed(KeyCode::Digit3) {
-        overlay.text_config.font_size += 2.0;
-    }
-    if input.just_pressed(KeyCode::Digit4) {
-        overlay.enabled = !overlay.enabled;
     }
 }
 
