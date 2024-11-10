@@ -10,6 +10,7 @@ use bevy::{
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef},
     sprite::{Material2d, Material2dPlugin},
+    window::PresentMode,
 };
 
 /// This example uses a shader source file from the assets subdirectory
@@ -25,7 +26,16 @@ impl OverlayColor {
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins,
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    present_mode: PresentMode::Immediate,
+                    resizable: true,
+                    position: WindowPosition::Automatic,
+                    mode: bevy::window::WindowMode::BorderlessFullscreen,
+                    ..default()
+                }),
+                ..default()
+            }),
             Material2dPlugin::<CustomMaterial>::default(),
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
