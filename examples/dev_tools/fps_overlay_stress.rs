@@ -1,10 +1,8 @@
 //! Showcase how to use and configure FPS overlay.
+use bevy_render::render_resource::ShaderType;
 
 use bevy::{
-    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin},
-    prelude::*,
-    text::FontSmoothing,
-    window::PresentMode,
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin}, math::VectorSpace, prelude::*, text::FontSmoothing, window::PresentMode
 };
 
 use bevy::{
@@ -54,7 +52,7 @@ fn main() {
             },
         ))
         .add_systems(Startup, setup)
-        .add_systems(Update, customize_config)
+        .add_systems(Update, (update_test, customize_config))
         .run();
 }
 
@@ -65,7 +63,7 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     // We need to spawn a camera (2d or 3d) to see the overlay
-    commands.spawn(Camera2d);
+    commands.spawn((Camera2d, Msaa::Off));
 
     // Instruction text
 
@@ -84,15 +82,26 @@ fn setup(
         },
     ));
 
-    // quad
-    commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(2500., 2500.))),
-        MeshMaterial2d(materials.add(CustomMaterial {
-            color: LinearRgba::BLUE,
-            color_texture: Some(asset_server.load("branding/icon.png")),
-        })),
-        Transform::default(),
-    ));
+    for i in 0..250 {
+        // quad
+        commands.spawn((
+            Mesh2d(meshes.add(Rectangle::new(500., 500.))),
+            MeshMaterial2d(materials.add(CustomMaterial {
+                color: MaterialUniform {
+                    color: LinearRgba::BLUE,
+                    arr: [Vec4::ZERO; 100],
+                    fake1: 0,
+                    fake2: 0,
+                    fake3: 0,
+                    fake4: 0,
+                    fake5: 0
+                },
+                color_texture: Some(asset_server.load("branding/icon.png")),
+                color_texture_2: Some(asset_server.load("branding/icon.png")),
+            })),
+            Transform::default(),
+        ));
+    }
 }
 
 fn customize_config(input: Res<ButtonInput<KeyCode>>, mut overlay: ResMut<FpsOverlayConfig>) {
@@ -115,14 +124,35 @@ fn customize_config(input: Res<ButtonInput<KeyCode>>, mut overlay: ResMut<FpsOve
     }
 }
 
+fn update_test(mut a: ResMut<Assets<CustomMaterial>>) {
+    for (_, a) in a.iter_mut() {
+        a.color.color.red = (a.color.color.red + 0.1) % 1.0;
+    }
+}
+
+#[derive(Debug, Clone, ShaderType)]
+pub struct MaterialUniform {
+    color: LinearRgba,
+    arr: [Vec4; 100],
+    fake1: u32,
+    fake2: u32,
+    fake3: u32,
+    fake4: u32,
+    fake5: u32,
+}
+
 // This is the struct that will be passed to your shader
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+
 struct CustomMaterial {
     #[uniform(0)]
-    color: LinearRgba,
+    color: MaterialUniform,
     #[texture(1)]
     #[sampler(2)]
     color_texture: Option<Handle<Image>>,
+    #[texture(3)]
+    #[sampler(4)]
+    color_texture_2: Option<Handle<Image>>,
 }
 
 /// The Material2d trait is very configurable, but comes with sensible defaults for all methods.
