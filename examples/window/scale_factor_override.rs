@@ -1,7 +1,7 @@
 //! This example illustrates how to override the window scale factor imposed by the
 //! operating system.
 
-use bevy::{prelude::*, window::WindowResolution};
+use bevy::{prelude::*, window::{WindowMode, WindowResolution}};
 
 #[derive(Component)]
 struct CustomText;
@@ -87,12 +87,17 @@ fn toggle_override(input: Res<ButtonInput<KeyCode>>, mut window: Single<&mut Win
         window
             .resolution
             .set_scale_factor_override(scale_factor_override.xor(Some(1.0)));
+
     }
 }
 
 /// This system changes the scale factor override when up or down is pressed
 fn change_scale_factor(input: Res<ButtonInput<KeyCode>>, mut window: Single<&mut Window>) {
     let scale_factor_override = window.resolution.scale_factor_override();
+    if input.just_pressed(KeyCode::KeyH) {
+//        window.resolution = WindowResolution::default().with_scale_factor_override(window.resolution.scale_factor());
+        window.mode = WindowMode::BorderlessFullscreen(MonitorSelection::Primary);
+    }
     if input.just_pressed(KeyCode::ArrowUp) {
         window
             .resolution
